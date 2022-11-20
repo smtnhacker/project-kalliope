@@ -4,7 +4,7 @@ ENV NODE_ENV=development
 COPY package*.json .
 RUN npm install
 COPY . .
-CMD ["npm", "run", "build"]
+RUN npm run build
 
 FROM node:16.15.1-slim AS start
 WORKDIR /app
