@@ -1,0 +1,18 @@
+/* ----- THEMES ----- */
+
+.light {
+  --black: #141414;
+  --dark: #1B1B1B;
+  --white: #F3F3F3;
+}
+
+/* ----- END THEMES ----- */
+
+.nav {
+  background: var(--black);
+  color: var(--white);
+
+  padding: 24px 64px;
+  font-size: 2rem;
+  font-weight: 200;
+}

@@ -1,0 +1,64 @@
+.container button {
+    --text-color: var(--white);
+
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: var(--text-color);
+}
+
+.container button svg {
+    transform: translateY(0.2rem);
+}
+
+.nav {
+    background: var(--dark);
+    color: var(--white);
+    padding: 12px;
+
+    display: flex;
+    justify-content: space-between;
+}
+
+.nav > div {
+    flex-grow: 1;
+}
+
+.nav > .left {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+}
+
+.nav > .mid {
+    display: flex;
+    font-size: 0.8rem;
+    align-items: center;
+}
+
+.nav > .mid input[type=number] {
+    width: 5ch;
+    margin: 0 3px;
+    background: var(--black);
+    color: var(--text-color);
+    text-align: center;
+
+    appearance: none;
+}
+
+.nav input[type=number]::-webkit-outer-spin-button,
+.nav input[type=number]::-webkit-inner-spin-button {
+    appearance: none;
+    margin: 0;
+}
+
+.nav > .mid > div {
+    min-height: 26px;
+    display: flex;
+    align-items: center;
+}
+
+.nav > .mid button {
+    font-size: 1.2rem;
+    min-width: 4ch;
+}
