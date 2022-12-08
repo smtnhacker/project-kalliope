@@ -12,6 +12,12 @@
 }
 
 .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1;
+
     background: var(--dark);
     color: var(--white);
     padding: 12px;
@@ -61,4 +67,15 @@
 .nav > .mid button {
     font-size: 1.2rem;
     min-width: 4ch;
+}
+
+.main {
+    display: flex;
+    justify-content: center;
+}
+
+.document {
+    padding-top: 24px;
+    display: flex;
+    flex-direction: column;
 }

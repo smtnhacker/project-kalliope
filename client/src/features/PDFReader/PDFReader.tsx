@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react"
+import React, { useEffect, useState, useRef, useCallback } from "react"
 import { pdfjs } from "react-pdf"
 import { Document, Page } from "react-pdf/dist/esm/entry.webpack5"
+import { useInView } from "react-intersection-observer";
 import { IconContext } from "react-icons/lib/esm/iconContext";
 import {
   MdMenu,
@@ -17,21 +18,72 @@ const options = {
   standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts`,
 }
 
+interface PageWrapperProps {
+  inputRef: (el : HTMLDivElement | null) => void,
+  scale: number,
+  pageNumber: number,
+  onVisible: (pageNum: number) => void
+}
+
+function PageWrapper(props: PageWrapperProps) {
+  const { ref: inViewRef, inView, entry } = useInView({
+    threshold: 0.5
+  })
+
+  const getRef = useCallback(
+    (node: HTMLDivElement) => {
+      // assign to provided ref
+      props.inputRef(node)
+      // assign to intersection observer ref
+      inViewRef(node)
+    },
+    [inViewRef, props]
+  )
+
+  // check visibility
+  useEffect(() => {
+    if (inView) {
+      props.onVisible(props.pageNumber)
+    }
+  }, [inView, props])
+
+  return (
+    <Page
+      inputRef={getRef}
+      pageNumber={props.pageNumber}
+      scale={props.scale || 1.0} />
+  )
+}
+
 function PDFReader() {
   const [numPages, setNumPages] = useState<number>(1)
   const [pageNumber, setPageNumber] = useState<number>(1)
   const [scale, setScale] = useState<number>(1.0)
 
-  const handleLoadSuccess = ({ numPages } : { numPages: number }) => {
-    setNumPages(numPages);
-  }
+  // inefficient navigation
+  const pageRefs = useRef<any[]|null[]>([])
 
+  const handleLoadSuccess = ({ numPages } : { numPages: number }) => {
+    setNumPages(numPages)
+
+    // setup refs for each pages
+    pageRefs.current = pageRefs.current.slice(0, numPages)
+  }
+  
   const changePage = (newPage: number) => {
     // ensure that the page is valid
     if (newPage <= 0 || newPage > numPages) {
       return
     }
     setPageNumber(newPage)
+
+    // ignore if currently still typing
+    if (isNaN(newPage)) {
+      return
+    }
+
+    // for navigation
+    pageRefs.current[newPage-1].scrollIntoView()
   }
 
   const changeScale = (newScale: number) => {
@@ -41,9 +93,38 @@ function PDFReader() {
     }
     setScale(newScale)
   }
-
+  
   return (
     <div className={styles.container}>
+      <div className={styles.main}>
+        <Document 
+          className={styles.document}
+          file={SAMPLE_URL}
+          onLoadSuccess={handleLoadSuccess} 
+          options={options}>
+          {
+            Array.from(
+              new Array(numPages),
+              (el, index) => (
+                <PageWrapper
+                  inputRef={el => pageRefs.current[index] = el}
+                  key={`page_${index+1}`}
+                  pageNumber={index+1}
+                  scale={scale || 1.0}
+                  onVisible={p => setPageNumber(p)} />
+              )
+            )
+          }
+          {/* <Page 
+            pageNumber={pageNumber}
+            scale={scale || 1.0} />
+          { (pageNumber < numPages) && 
+          <Page
+            pageNumber={pageNumber+1}
+            scale={scale || 1.0} />
+          } */}
+        </Document>
+      </div>
       <nav className={styles.nav}>
         <div className={styles.left}>
           <button>
@@ -71,25 +152,14 @@ function PDFReader() {
               min="1" 
               max="500" 
               value={Math.round(100 * scale)}
-              onChange={e => changeScale(parseInt(e.target.value) / 100)}
-              defaultValue="100" />
+              onChange={e => changeScale(parseInt(e.target.value) / 100)} />
             <button onClick={() => changeScale(scale + 0.1)}>+</button>
           </div>
         </div>
         <div className={styles.right}>
-
+          {/* TO-DO */}
         </div>
       </nav>
-      <div className={styles.main}>
-        <Document 
-          file={SAMPLE_URL}
-          onLoadSuccess={handleLoadSuccess} 
-          options={options}>
-          <Page 
-            pageNumber={pageNumber}
-            scale={scale || 1.0} />
-        </Document>
-      </div>
     </div>
   )
 }
