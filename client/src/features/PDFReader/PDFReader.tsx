@@ -20,6 +20,7 @@ const options = {
 function PDFReader() {
   const [numPages, setNumPages] = useState<number>(1)
   const [pageNumber, setPageNumber] = useState<number>(1)
+  const [scale, setScale] = useState<number>(1.0)
 
   const handleLoadSuccess = ({ numPages } : { numPages: number }) => {
     setNumPages(numPages);
@@ -31,6 +32,14 @@ function PDFReader() {
       return
     }
     setPageNumber(newPage)
+  }
+
+  const changeScale = (newScale: number) => {
+    // ensure the scale is reasonable
+    if (newScale < 0.25 || newScale > 5) {
+      return
+    }
+    setScale(newScale)
   }
 
   return (
@@ -55,9 +64,16 @@ function PDFReader() {
             / <>{numPages}</>
           </div>
           <div className={styles.zoom}>
-            <button>-</button>
-            <input type="number" name="zoom" min="1" max="500" defaultValue="100" />
-            <button>+</button>
+            <button onClick={() => changeScale(scale - 0.1)}>-</button>
+            <input 
+              type="number" 
+              name="zoom" 
+              min="1" 
+              max="500" 
+              value={Math.round(100 * scale)}
+              onChange={e => changeScale(parseInt(e.target.value) / 100)}
+              defaultValue="100" />
+            <button onClick={() => changeScale(scale + 0.1)}>+</button>
           </div>
         </div>
         <div className={styles.right}>
@@ -69,7 +85,9 @@ function PDFReader() {
           file={SAMPLE_URL}
           onLoadSuccess={handleLoadSuccess} 
           options={options}>
-          <Page pageNumber={pageNumber} />
+          <Page 
+            pageNumber={pageNumber}
+            scale={scale || 1.0} />
         </Document>
       </div>
     </div>

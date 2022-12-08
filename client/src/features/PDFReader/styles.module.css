@@ -37,7 +37,7 @@
 }
 
 .nav > .mid input[type=number] {
-    width: 5ch;
+    width: 7ch;
     margin: 0 3px;
     background: var(--black);
     color: var(--text-color);
