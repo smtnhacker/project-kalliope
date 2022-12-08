@@ -18,8 +18,20 @@ const options = {
 }
 
 function PDFReader() {
-  const [numPages, setNumPages] = useState()
-  const [pageNumber, setPageNumber] = useState(1)
+  const [numPages, setNumPages] = useState<number>(1)
+  const [pageNumber, setPageNumber] = useState<number>(1)
+
+  const handleLoadSuccess = ({ numPages } : { numPages: number }) => {
+    setNumPages(numPages);
+  }
+
+  const changePage = (newPage: number) => {
+    // ensure that the page is valid
+    if (newPage <= 0 || newPage > numPages) {
+      return
+    }
+    setPageNumber(newPage)
+  }
 
   return (
     <div className={styles.container}>
@@ -34,12 +46,17 @@ function PDFReader() {
         </div>
         <div className={styles.mid}>
           <div className={styles.page}>
-            <input type="number" name="curpage" min="1" max="50" defaultValue={1} />
-            / 50
+            <input 
+              type="number" 
+              name="curpage" 
+              min="1" max={numPages.toString()} 
+              value={pageNumber.toString()} 
+              onChange={e => changePage(parseInt(e.target.value))} />
+            / <>{numPages}</>
           </div>
           <div className={styles.zoom}>
             <button>-</button>
-            <input type="number" name="zoom" min="1" max="500" defaultValue={100} />
+            <input type="number" name="zoom" min="1" max="500" defaultValue="100" />
             <button>+</button>
           </div>
         </div>
@@ -48,8 +65,11 @@ function PDFReader() {
         </div>
       </nav>
       <div className={styles.main}>
-        <Document file={SAMPLE_URL} options={options}>
-          <Page pageNumber={1} />
+        <Document 
+          file={SAMPLE_URL}
+          onLoadSuccess={handleLoadSuccess} 
+          options={options}>
+          <Page pageNumber={pageNumber} />
         </Document>
       </div>
     </div>
