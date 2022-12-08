@@ -56,6 +56,7 @@ function PageWrapper(props: PageWrapperProps) {
 }
 
 function PDFReader() {
+  const [metadata, setMetadata] = useState()
   const [numPages, setNumPages] = useState<number>(1)
   const [pageNumber, setPageNumber] = useState<number>(1)
   const [scale, setScale] = useState<number>(1.0)
@@ -63,8 +64,10 @@ function PDFReader() {
   // inefficient navigation
   const pageRefs = useRef<any[]|null[]>([])
 
-  const handleLoadSuccess = ({ numPages } : { numPages: number }) => {
-    setNumPages(numPages)
+  const handleLoadSuccess = (pdf: any) => {
+    setNumPages(pdf.numPages)
+    pdf.getMetadata()
+      .then((res: any) => setMetadata(res))
 
     // setup refs for each pages
     pageRefs.current = pageRefs.current.slice(0, numPages)
@@ -132,7 +135,9 @@ function PDFReader() {
               <MdMenu />
             </IconContext.Provider>
           </button>
-          Sample PDF Title
+          {
+            metadata ? (metadata as any).info.Title : "No Title"
+          }
         </div>
         <div className={styles.mid}>
           <div className={styles.page}>
