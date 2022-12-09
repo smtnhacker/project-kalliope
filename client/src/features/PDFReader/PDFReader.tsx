@@ -107,7 +107,10 @@ function PDFReader() {
     const dt = e.dataTransfer
     const files = dt.files
 
-    // TO-DO: validate the file
+    // validate that a file is dropped
+    if (files.length === 0) {
+      return
+    }
 
     // revoke previous file
     if (pdfFile !== SAMPLE_URL) {
