@@ -57,7 +57,7 @@ function PageWrapper(props: PageWrapperProps) {
 
 function PDFReader() {
   const [pdfFile, setPdfFile] = useState(SAMPLE_URL)
-  const [metadata, setMetadata] = useState()
+  const [metadata, setMetadata] = useState(null)
   const [numPages, setNumPages] = useState<number>(1)
   const [pageNumber, setPageNumber] = useState<number>(1)
   const [scale, setScale] = useState<number>(1.0)
@@ -73,6 +73,12 @@ function PDFReader() {
 
     // setup refs for each pages
     pageRefs.current = pageRefs.current.slice(0, numPages)
+  }
+
+  const handleLoadError = (error: Error) => {
+    console.error("Error while loading document!: " + error.message)
+    setMetadata(null)
+    setPdfFile("")
   }
   
   const changePage = (newPage: number) => {
@@ -155,6 +161,7 @@ function PDFReader() {
           className={styles.document}
           file={pdfFile}
           onLoadSuccess={handleLoadSuccess} 
+          onLoadError={handleLoadError}
           options={options}>
           {
             Array.from(
