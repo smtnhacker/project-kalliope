@@ -120,12 +120,32 @@ function PDFReader() {
     // set the tab name
     document.title = files[0].name
   }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+
+    setShowDrag(true)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+  }
+  
+  const handleDragEnd = (e: React.DragEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+
+    setShowDrag(false)
+  }
   
   return (
     <div 
       className={styles.container}
-      onDragEnter={e => {e.stopPropagation(); e.preventDefault(); setShowDrag(true)}}
-      onDragOver={e => {e.stopPropagation(); e.preventDefault()}}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
       onDrop={handleDrop}>
       <div className={styles.main}>
         <Document 
@@ -146,14 +166,6 @@ function PDFReader() {
               )
             )
           }
-          {/* <Page 
-            pageNumber={pageNumber}
-            scale={scale || 1.0} />
-          { (pageNumber < numPages) && 
-          <Page
-            pageNumber={pageNumber+1}
-            scale={scale || 1.0} />
-          } */}
         </Document>
       </div>
       <nav className={styles.nav}>
