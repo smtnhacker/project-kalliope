@@ -56,10 +56,12 @@ function PageWrapper(props: PageWrapperProps) {
 }
 
 function PDFReader() {
+  const [pdfFile, setPdfFile] = useState(SAMPLE_URL)
   const [metadata, setMetadata] = useState()
   const [numPages, setNumPages] = useState<number>(1)
   const [pageNumber, setPageNumber] = useState<number>(1)
   const [scale, setScale] = useState<number>(1.0)
+  const [showDrag, setShowDrag] = useState(false)
 
   // inefficient navigation
   const pageRefs = useRef<any[]|null[]>([])
@@ -96,13 +98,39 @@ function PDFReader() {
     }
     setScale(newScale)
   }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    setShowDrag(false)
+
+    const dt = e.dataTransfer
+    const files = dt.files
+
+    // TO-DO: validate the file
+
+    // revoke previous file
+    if (pdfFile !== SAMPLE_URL) {
+      URL.revokeObjectURL(pdfFile)
+    }
+
+    const fileURL = URL.createObjectURL(files[0])
+    setPdfFile(fileURL)
+
+    // set the tab name
+    document.title = files[0].name
+  }
   
   return (
-    <div className={styles.container}>
+    <div 
+      className={styles.container}
+      onDragEnter={e => {e.stopPropagation(); e.preventDefault(); setShowDrag(true)}}
+      onDragOver={e => {e.stopPropagation(); e.preventDefault()}}
+      onDrop={handleDrop}>
       <div className={styles.main}>
         <Document 
           className={styles.document}
-          file={SAMPLE_URL}
+          file={pdfFile}
           onLoadSuccess={handleLoadSuccess} 
           options={options}>
           {
@@ -165,6 +193,9 @@ function PDFReader() {
           {/* TO-DO */}
         </div>
       </nav>
+      <div className={`${styles["drag-prompt"]} ${showDrag && styles["drag-prompt-appear"]}`}>
+        Drag and Drop a PDF file
+      </div>
     </div>
   )
 }
