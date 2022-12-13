@@ -4,8 +4,10 @@ import { Document, Page } from "react-pdf/dist/esm/entry.webpack5"
 import { useInView } from "react-intersection-observer";
 import { IconContext } from "react-icons/lib/esm/iconContext";
 import {
-  MdMenu,
+  MdMenu, MdBookmarkBorder, MdBookmark
 } from "react-icons/md"
+
+import { getBookmarkPage, saveBookmarkPage, BookHash, PageNumber } from "./bookmark"
 
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
@@ -57,6 +59,8 @@ function PageWrapper(props: PageWrapperProps) {
 
 function PDFReader() {
   const [pdfFile, setPdfFile] = useState(SAMPLE_URL)
+  const [bookHash, setBookHash] = useState<BookHash>("")
+  const [bookmark, setBookmark] = useState<PageNumber>(0)
   const [metadata, setMetadata] = useState(null)
   const [numPages, setNumPages] = useState<number>(1)
   const [pageNumber, setPageNumber] = useState<number>(1)
@@ -70,9 +74,30 @@ function PDFReader() {
     setNumPages(pdf.numPages)
     pdf.getMetadata()
       .then((res: any) => setMetadata(res))
-
+      
     // setup refs for each pages
     pageRefs.current = pageRefs.current.slice(0, numPages)
+    
+    // Generate BookHash
+    let bh: BookHash = ""
+
+    bh = JSON.stringify(pdf.fingerprints)
+    setBookHash(bh)
+    
+    // Load Bookmark
+    const bookmarkPage = getBookmarkPage(bh)
+    if (bookmarkPage) {
+      setBookmark(bookmarkPage)
+      // manual page change due to race condition
+      setTimeout(() => {
+        pageRefs.current[bookmarkPage-1].scrollIntoView()
+        setPageNumber(bookmarkPage)
+      }, 50)
+    } else {
+      setBookmark(0)
+    }
+
+
   }
 
   const handleLoadError = (error: Error) => {
@@ -87,12 +112,12 @@ function PDFReader() {
       return
     }
     setPageNumber(newPage)
-
+    
     // ignore if currently still typing
     if (isNaN(newPage)) {
       return
     }
-
+    
     // for navigation
     pageRefs.current[newPage-1].scrollIntoView()
   }
@@ -148,6 +173,15 @@ function PDFReader() {
 
     setShowDrag(false)
   }
+
+  const handleOnVisible = (p: number) => {
+    setPageNumber(p)
+  }
+
+  const handleChangeBookmark = (p: PageNumber) => {
+    setBookmark(p)
+    saveBookmarkPage(bookHash, p)
+  }
   
   return (
     <div 
@@ -172,7 +206,7 @@ function PDFReader() {
                   key={`page_${index+1}`}
                   pageNumber={index+1}
                   scale={scale || 1.0}
-                  onVisible={p => setPageNumber(p)} />
+                  onVisible={handleOnVisible} />
               )
             )
           }
@@ -212,7 +246,17 @@ function PDFReader() {
           </div>
         </div>
         <div className={styles.right}>
-          {/* TO-DO */}
+          <IconContext.Provider value={{ size: "2rem" }}>
+          {
+            bookmark === pageNumber 
+            ? <button onClick={e => handleChangeBookmark(0)}>
+                <MdBookmark />
+              </button>
+            : <button onClick={e => handleChangeBookmark(pageNumber)}>
+                <MdBookmarkBorder />
+              </button>
+          }
+          </IconContext.Provider>
         </div>
       </nav>
       <div className={`${styles["drag-prompt"]} ${showDrag && styles["drag-prompt-appear"]}`}>
