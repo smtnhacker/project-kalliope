@@ -28,7 +28,7 @@ interface PageWrapperProps {
 }
 
 function PageWrapper(props: PageWrapperProps) {
-  const { ref: inViewRef, inView, entry } = useInView({
+  const { ref: inViewRef, inView } = useInView({
     threshold: 0.5
   })
 
