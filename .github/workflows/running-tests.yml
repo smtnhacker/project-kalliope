@@ -1,0 +1,15 @@
+name: running-tests
+run-name: ${{ github.actor }} pushed on the branches that need passing tests
+on:
+  push:
+    branches:
+      - main
+      - dev
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: cd client && npm ci
+      - run: cd client && npm i -D jest
+      - run: cd client && npm run test
