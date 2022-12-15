@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useRef, useCallback } from "react"
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react"
 import { pdfjs } from "react-pdf"
 import { Document, Page } from "react-pdf/dist/esm/entry.webpack5"
+import { VariableSizeList as List, areEqual } from "react-window"
 import { useInView } from "react-intersection-observer";
 import { IconContext } from "react-icons/lib/esm/iconContext";
 import {
@@ -57,24 +58,72 @@ function PageWrapper(props: PageWrapperProps) {
   )
 }
 
+const VirtualPage = React.memo((props: any) => {
+  return (
+    <div style={props.style}>
+      <PageWrapper 
+        inputRef={props.inputRef}
+        pageNumber={props.index+1}
+        scale={props.scale || 1.0}
+        onVisible={() => {}}
+      />
+    </div>
+  )
+}, areEqual)
+
 function PDFReader() {
+  // Shows/Hides the drag overlay
+  const [showDrag, setShowDrag] = useState(false)
+  
+  // File-specific Metadata
   const [pdfFile, setPdfFile] = useState(SAMPLE_URL)
   const [bookHash, setBookHash] = useState<BookHash>("")
-  const [bookmark, setBookmark] = useState<PageNumber>(0)
   const [metadata, setMetadata] = useState(null)
-  const [numPages, setNumPages] = useState<number>(1)
+  const [pdf, setPDF] = useState<any>()
+
+  // File-specific data needed for UI
+  const [numPages, setNumPages] = useState<number>(0)
+  
+  // For interacting with the document
+  const [bookmark, setBookmark] = useState<PageNumber>(0)
   const [pageNumber, setPageNumber] = useState<number>(1)
-  const [scale, setScale] = useState<number>(1.0)
-  const [showDrag, setShowDrag] = useState(false)
+  const [scale, setScale] = useState<number>(1.0)  
+  
+  // Used by virtual window
+  const listRef: any = React.createRef()
+  const pageHeights = useMemo(() => {
+    if (!pdf) {
+      return 700
+    }
+    
+    const res: any = {}
+    
+    for (let p = 1; p <= (pdf as any).numPages; p++) {
+      pdf.getPage(p)
+      .then((page: any) => {
+        res[p] = page.getViewport(scale).viewBox[3] * scale
+      })
+    }
+
+    return res
+    
+  }, [pdf, scale])
+
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.resetAfterIndex(0)
+    }
+  }, [pdf, scale, pageHeights, listRef])
 
   // inefficient navigation
   const pageRefs = useRef<any[]|null[]>([])
 
   const handleLoadSuccess = (pdf: any) => {
+    setPDF(pdf)
     setNumPages(pdf.numPages)
     pdf.getMetadata()
       .then((res: any) => setMetadata(res))
-      
+
     // setup refs for each pages
     pageRefs.current = pageRefs.current.slice(0, numPages)
     
@@ -96,7 +145,6 @@ function PDFReader() {
     } else {
       setBookmark(0)
     }
-
 
   }
 
@@ -128,6 +176,13 @@ function PDFReader() {
       return
     }
     setScale(newScale)
+  }
+
+  const getPageHeight = (p: PageNumber) => {
+    if (pageHeights[p+1]) {
+      return pageHeights[p+1]
+    }
+    return 750
   }
 
   const handleDrop = (e: React.DragEvent) => {
@@ -197,19 +252,22 @@ function PDFReader() {
           onLoadSuccess={handleLoadSuccess} 
           onLoadError={handleLoadError}
           options={options}>
-          {
-            Array.from(
-              new Array(numPages),
-              (el, index) => (
-                <PageWrapper
-                  inputRef={el => pageRefs.current[index] = el}
-                  key={`page_${index+1}`}
-                  pageNumber={index+1}
-                  scale={scale || 1.0}
-                  onVisible={handleOnVisible} />
-              )
-            )
-          }
+          <List
+            height={600}
+            itemCount={numPages}
+            itemSize={getPageHeight}
+            ref={listRef}
+            width={1000}>
+              {({index, style}) => (
+                <VirtualPage
+                  index={index}
+                  style={style}
+                  onVisible={handleOnVisible}
+                  scale={scale}
+                  inputRef={(el: any) => pageRefs.current[index] = el}
+                />
+              )}
+          </List>
         </Document>
       </div>
       <nav className={styles.nav}>
