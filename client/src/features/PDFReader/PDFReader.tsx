@@ -116,6 +116,26 @@ function PDFReader() {
     }
   }, [pdf, scale, pageHeights, listRef])
 
+  // Go to bookmark, if any
+  // This is placed in a hook so that it will run
+  // once listRef is updated
+  useEffect(() => {
+    if (pdf && listRef.current && bookmark) {
+      // save the reference in case
+      // listRef.current disappears (such as 
+      // during a rerender)
+      const theRef = listRef.current
+      // delay it the shortest time possible
+      // to let the DOM render the appropriate
+      // things first before scrolling to the
+      // page
+      setTimeout(() => {
+        theRef.scrollToItem(bookmark-1)
+        setPageNumber.current(bookmark)
+      }, 10)
+    }
+  }, [listRef.current, pdf, bookmark])
+
   const handleLoadSuccess = (pdf: any) => {
     setPDF(pdf)
     setNumPages(pdf.numPages)
@@ -132,11 +152,6 @@ function PDFReader() {
     const bookmarkPage = getBookmarkPage(bh)
     if (bookmarkPage) {
       setBookmark(bookmarkPage)
-      // manual page change due to race condition
-      setTimeout(() => {
-        listRef.current.scrollToItem(bookmarkPage-1)
-        setPageNumber.current(bookmarkPage)
-      }, 50)
     } else {
       setBookmark(0)
     }
