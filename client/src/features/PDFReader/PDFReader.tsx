@@ -3,12 +3,10 @@ import { pdfjs } from "react-pdf"
 import { Document, Page } from "react-pdf/dist/esm/entry.webpack5"
 import { VariableSizeList as List, areEqual } from "react-window"
 import { useInView } from "react-intersection-observer";
-import { IconContext } from "react-icons/lib/esm/iconContext";
-import {
-  MdMenu, MdBookmarkBorder, MdBookmark
-} from "react-icons/md"
+
 
 import { getBookmarkPage, saveBookmarkPage, BookHash, PageNumber } from "./bookmark"
+import NavBar from "./NavBar";
 
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
@@ -22,7 +20,7 @@ const options = {
 }
 
 interface PageWrapperProps {
-  inputRef: (el : HTMLDivElement | null) => void,
+  inputRef?: (el : HTMLDivElement | null) => void,
   scale: number,
   pageNumber: number,
   onVisible: (pageNum: number) => void
@@ -36,7 +34,9 @@ function PageWrapper(props: PageWrapperProps) {
   const getRef = useCallback(
     (node: HTMLDivElement) => {
       // assign to provided ref
-      props.inputRef(node)
+      if (props.inputRef) {
+        props.inputRef(node)
+      }
       // assign to intersection observer ref
       inViewRef(node)
     },
@@ -62,10 +62,9 @@ const VirtualPage = React.memo((props: any) => {
   return (
     <div style={props.style}>
       <PageWrapper 
-        inputRef={props.inputRef}
         pageNumber={props.index+1}
         scale={props.scale || 1.0}
-        onVisible={() => {}}
+        onVisible={props.onVisible}
       />
     </div>
   )
@@ -86,8 +85,10 @@ function PDFReader() {
   
   // For interacting with the document
   const [bookmark, setBookmark] = useState<PageNumber>(0)
-  const [pageNumber, setPageNumber] = useState<number>(1)
   const [scale, setScale] = useState<number>(1.0)  
+  // let the navbar handle the state to prevent unnecessary rerenders
+  // to the virtual window
+  const setPageNumber = useRef((p: PageNumber) => {})
   
   // Used by virtual window
   const listRef: any = React.createRef()
@@ -115,18 +116,12 @@ function PDFReader() {
     }
   }, [pdf, scale, pageHeights, listRef])
 
-  // inefficient navigation
-  const pageRefs = useRef<any[]|null[]>([])
-
   const handleLoadSuccess = (pdf: any) => {
     setPDF(pdf)
     setNumPages(pdf.numPages)
     pdf.getMetadata()
       .then((res: any) => setMetadata(res))
 
-    // setup refs for each pages
-    pageRefs.current = pageRefs.current.slice(0, numPages)
-    
     // Generate BookHash
     let bh: BookHash = ""
 
@@ -139,8 +134,8 @@ function PDFReader() {
       setBookmark(bookmarkPage)
       // manual page change due to race condition
       setTimeout(() => {
-        pageRefs.current[bookmarkPage-1].scrollIntoView()
-        setPageNumber(bookmarkPage)
+        listRef.current.scrollToItem(bookmarkPage-1)
+        setPageNumber.current(bookmarkPage)
       }, 50)
     } else {
       setBookmark(0)
@@ -159,7 +154,7 @@ function PDFReader() {
     if (newPage <= 0 || newPage > numPages) {
       return
     }
-    setPageNumber(newPage)
+    setPageNumber.current(newPage)
     
     // ignore if currently still typing
     if (isNaN(newPage)) {
@@ -167,7 +162,7 @@ function PDFReader() {
     }
     
     // for navigation
-    pageRefs.current[newPage-1].scrollIntoView()
+    listRef.current.scrollToItem(newPage-1)
   }
 
   const changeScale = (newScale: number) => {
@@ -178,12 +173,12 @@ function PDFReader() {
     setScale(newScale)
   }
 
-  const getPageHeight = (p: PageNumber) => {
+  const getPageHeight = useCallback((p: PageNumber) => {
     if (pageHeights[p+1]) {
       return pageHeights[p+1]
     }
     return 750
-  }
+  }, [pageHeights])
 
   const handleDrop = (e: React.DragEvent) => {
     e.stopPropagation()
@@ -229,9 +224,9 @@ function PDFReader() {
     setShowDrag(false)
   }
 
-  const handleOnVisible = (p: number) => {
-    setPageNumber(p)
-  }
+  const handleOnVisible = useCallback((p: number) => {
+    setPageNumber.current(p)
+  }, [])
 
   const handleChangeBookmark = (p: PageNumber) => {
     setBookmark(p)
@@ -264,59 +259,22 @@ function PDFReader() {
                   style={style}
                   onVisible={handleOnVisible}
                   scale={scale}
-                  inputRef={(el: any) => pageRefs.current[index] = el}
                 />
               )}
           </List>
         </Document>
       </div>
-      <nav className={styles.nav}>
-        <div className={styles.left}>
-          <button>
-            <IconContext.Provider value={{ size: "2rem", color: "var(--text-color)" }}>
-              <MdMenu />
-            </IconContext.Provider>
-          </button>
-          {
-            metadata ? (metadata as any).info.Title : "No Title"
-          }
-        </div>
-        <div className={styles.mid}>
-          <div className={styles.page}>
-            <input 
-              type="number" 
-              name="curpage" 
-              min="1" max={numPages.toString()} 
-              value={pageNumber.toString()} 
-              onChange={e => changePage(parseInt(e.target.value))} />
-            / <>{numPages}</>
-          </div>
-          <div className={styles.zoom}>
-            <button onClick={() => changeScale(scale - 0.1)}>-</button>
-            <input 
-              type="number" 
-              name="zoom" 
-              min="1" 
-              max="500" 
-              value={Math.round(100 * scale)}
-              onChange={e => changeScale(parseInt(e.target.value) / 100)} />
-            <button onClick={() => changeScale(scale + 0.1)}>+</button>
-          </div>
-        </div>
-        <div className={styles.right}>
-          <IconContext.Provider value={{ size: "2rem" }}>
-          {
-            bookmark === pageNumber 
-            ? <button onClick={e => handleChangeBookmark(0)}>
-                <MdBookmark />
-              </button>
-            : <button onClick={e => handleChangeBookmark(pageNumber)}>
-                <MdBookmarkBorder />
-              </button>
-          }
-          </IconContext.Provider>
-        </div>
-      </nav>
+      <NavBar
+        styles={styles}
+        metadata={metadata}
+        numPages={numPages}
+        setPageNumberRef={setPageNumber}
+        scale={scale}
+        bookmark={bookmark}
+        onChangePage={changePage}
+        onChangeScale={changeScale}
+        onChangeBookmark={handleChangeBookmark}
+      />
       <div className={`${styles["drag-prompt"]} ${showDrag && styles["drag-prompt-appear"]}`}>
         Drag and Drop a PDF file
       </div>
