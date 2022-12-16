@@ -8,6 +8,7 @@ interface NavBarProps {
     styles: any,
     metadata: any | null,
     numPages: number,
+    pageNumberRef: any,
     setPageNumberRef: any,
     scale: number,
     bookmark: number,
@@ -19,10 +20,11 @@ interface NavBarProps {
 function NavBar({ styles, metadata, numPages, scale, bookmark, ...props }: NavBarProps) {
   const [pageNumber, setPageNumber] = useState(1)
 
-  // Provide access to method to parent
+  // Provide access to method and attributes to parent
   useEffect(() => {
     props.setPageNumberRef.current = setPageNumber
-  }, [props.setPageNumberRef])
+    props.pageNumberRef.current = pageNumber
+  }, [props.setPageNumberRef, props.pageNumberRef, pageNumber])
 
   return (
     <nav className={styles.nav}>

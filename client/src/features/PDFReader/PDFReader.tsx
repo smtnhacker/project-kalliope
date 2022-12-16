@@ -27,8 +27,8 @@ interface PageWrapperProps {
 }
 
 function PageWrapper(props: PageWrapperProps) {
-  const { ref: inViewRef, inView } = useInView({
-    threshold: 0.5
+  const { ref: inViewRef, inView, } = useInView({
+    threshold: 0.1
   })
 
   const getRef = useCallback(
@@ -87,32 +87,43 @@ function PDFReader() {
   const [bookmark, setBookmark] = useState<PageNumber>(0)
   const [scale, setScale] = useState<number>(1.0)  
   // let the navbar handle the state to prevent unnecessary rerenders
-  // to the virtual window
+  // to the virtual 
+  const pageNumber = useRef(0)
   const setPageNumber = useRef((p: PageNumber) => {})
   
   // Used by virtual window
   const listRef: any = React.createRef()
-  const pageHeights = useMemo(() => {
-    if (!pdf) {
-      return 700
-    }
-    
-    const res: any = {}
-    
-    for (let p = 1; p <= (pdf as any).numPages; p++) {
-      pdf.getPage(p)
-      .then((page: any) => {
-        res[p] = page.getViewport(scale).viewBox[3] * scale
-      })
-    }
-
-    return res
-    
-  }, [pdf, scale])
+  const [pageHeights, setPageHeights] = useState<{ [p: PageNumber]: number}>({})
 
   useEffect(() => {
+    const populateHeights = async () => {
+      if (pdf) {
+        const res: any = {}
+        for (let p = 1; p <= (pdf as any).numPages; p++) {
+          const page = await pdf.getPage(p)
+          res[p] = page.getViewport(scale).viewBox[3] * scale
+        }
+        return res
+      } else {
+        return {}
+      }
+    }
+    populateHeights()
+      .then(res => setPageHeights(res))
+  }, [pdf, scale])
+
+  // rerender the DOM when
+  // either the pdf or the
+  // scale changes
+  const pageRef = useRef(0)
+  useEffect(() => {
     if (listRef.current) {
+      // save the current page first
+      pageRef.current = pageNumber.current - 1
+      // rerender the list
       listRef.current.resetAfterIndex(0)
+      // go to page number
+      listRef.current.scrollToItem(pageRef.current, "start")
     }
   }, [pdf, scale, pageHeights, listRef])
 
@@ -130,7 +141,7 @@ function PDFReader() {
       // things first before scrolling to the
       // page
       setTimeout(() => {
-        theRef.scrollToItem(bookmark-1)
+        theRef.scrollToItem(bookmark-1, "start")
         setPageNumber.current(bookmark)
       }, 10)
     }
@@ -177,7 +188,7 @@ function PDFReader() {
     }
     
     // for navigation
-    listRef.current.scrollToItem(newPage-1)
+    listRef.current.scrollToItem(newPage-1, "start")
   }
 
   const changeScale = (newScale: number) => {
@@ -188,12 +199,13 @@ function PDFReader() {
     setScale(newScale)
   }
 
-  const getPageHeight = useCallback((p: PageNumber) => {
+  const getPageHeight = (p: PageNumber) => {
     if (pageHeights[p+1]) {
       return pageHeights[p+1]
+    } else {
+      return 750
     }
-    return 750
-  }, [pageHeights])
+  }
 
   const handleDrop = (e: React.DragEvent) => {
     e.stopPropagation()
@@ -283,6 +295,7 @@ function PDFReader() {
         styles={styles}
         metadata={metadata}
         numPages={numPages}
+        pageNumberRef={pageNumber}
         setPageNumberRef={setPageNumber}
         scale={scale}
         bookmark={bookmark}
